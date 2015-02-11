@@ -1,41 +1,56 @@
-cogarch_sim<-function(t=0:10,beta=1,eta=0.05,phi=0.03,Lp="cp",rate=1,distribution="normal",mean=0,var=1,sigma=1,nu=0.5,theta=1,gs=0.01)
-{# Simulation of a COGARCH(1,1) process driven by a compound Poisson or a Variance-Gamma Lévy process
-  #Input: t - fixed time grid
-  #       beta,eta,phi - Input parameters for the cogarch process, have to be positive  
-  #       Lp - driving Lévy process: either "cp"=compound Poisson or ""vg"= Variance-Gamma 
-  #       rate - intensity of the compound Poisson Levy process
-  #       distribution - jump size distribution, e.g "normal"
-  #       mean,var - mean and variance of specified jump distribution
-  #       sigma, nu, theta - parameters for Variance-Gamma process (for E(L_1)=0 and E(L_1^2)=1 choose theta=0 and sigma=1)
-  #       gs - time grid size
-  #Output: G - COGARCH(1,1) process
-  #        vol - volatility process
-  #        Lt - driving Lévy process
-  #        delta_Lt - jumps of Lévy process
-  #        randomjumptimes - random jumptimes
+#' Simulation of COGARH(1,1) process
+#' 
+#' cogarch_sim simulates a COGARCH(1,1) process driven by a compound Poisson or a Variance-Gamma 
+#' Levy process
+#'
+#' The function use the Euler-Maruyama scheme in order to get a numerical 
+#' solution for a SDE. 
+#' See the Book: Peter E. Kloeden: "Numerical solution of stochastic differential equations"
+#'   
+#' @param t fixed time grid
+#' @param beta parameter of the cogarch process
+#' @param eta parameter of the cogarch process
+#' @param phi parameter of the cogarch process
+#' @param Lp driving Levy process: either "cp"=compound Poisson or ""vg"= Variance-Gamma
+#' @param rate  intensity of the compound Poisson Levy process
+#' @param distribution  jump size distribution, e.g "normal"
+#' @param mean mean of specified jump distribution
+#' @param var variance of specified jump distribution
+#' @param vg_param list of parameters for Variance-Gamma process 
+#'   (for E(L_1)=0 and E(L_1^2)=1 choose theta=0 and sigma=1)
+#' @param gs time grid size
+#' @return list containing the COGARCH(1,1), volatility and driving Levy process. As well as
+#'   the jumps of the Levy process and the random jumptimes
+
+cogarch_sim <- function(t = 0:10, beta = 1, eta = 0.05, phi = 0.03,
+                        Lp = "cp", rate = 1, distribution = "normal", mean = 0,
+                        var = 1, vg_param = list(sigma = 1, nu = 0.5, theta = 1), gs = 0.01){
   
-  #use the Euler-Maruyama scheme in order to get a numerical solution for a SDE
-  #See the Book: Peter E. Kloeden: "Numerical solution of stochastic differential equations"
-  t<-sort(t)
+
   n_t<-length(t)
   
   #find starting values
-  if(Lp=="cp"){
-    index<-1
-  }else if(Lp=="vg"){
-    index<-2
+  if(Lp == "cp"){
+    index <- 1
+  }else if( Lp == "vg"){
+    index <- 2
   }else{
     stop("No valid Levy process specified! Select 'cp' or 'vg'.")
   }
   switch(index,
 {output_cp<-compoundPoisson(0:10,rate,distribution,mean,var) #calls the function compoundPoisson with output c(randomjumptimes,randomjumpsizes,Lt)
- rt<-output_cp[,1] #randomjumptimes
+ rt<-output_cp[[1]] #randomjumptimes
  #delta_rt<-rt[2:N]-rt[1:(N-1)] #randomjumpintervals, delta_ti
- delta_rt<-output_cp[,4]#randomjumpintervals, delta_ti
- delta_Lt<-output_cp[,2] #randomjumpsizes, delta_Lti
- Lt<-output_cp[,3] #L_t
+ delta_rt<-output_cp[[4]]#randomjumpintervals, delta_ti
+ delta_Lt<-output_cp[[2]] #randomjumpsizes, delta_Lti
+ #Lt<-output_cp[,3] #L_t
 },
-{output_vg<-vargamma(0:10,sigma,nu,theta,gs) #calls the function varGamma with output timesequence and V
+{
+  sigma <- vg_param[["sigma"]]
+  nu <- vg_param[["nu"]]
+  theta <- vg_param[["theta"]]
+  
+  output_vg<-vargamma(0:10,sigma,nu,theta,gs) #calls the function varGamma with output timesequence and V
  Lt<-output_vg[,2]
  rt<-output_vg[,1]
  nv<-length(Lt)
@@ -73,12 +88,12 @@ cogarch_sim<-function(t=0:10,beta=1,eta=0.05,phi=0.03,Lp="cp",rate=1,distributio
   switch(index,
 {output_cp_new<-compoundPoisson(t,rate,distribution,mean,var) #calls function compoundPoisson
  
- rt_new<-output_cp_new[,1] #randomjumptimes
+ rt_new<-output_cp_new[[1]] #randomjumptimes
  #NN<-length(rt_new)
  #delta_rt_new<-rt_new[2:NN]-rt_new[1:(NN-1)] #randomjumpintervals, delta_ti
- delta_rt_new<-output_cp_new[,4]
- delta_Lt_new<-output_cp_new[,2] #randomjumpsizes, delta_Lti
- Lt_new<-output_cp_new[,3] #L_t
+ delta_rt_new<-output_cp_new[[4]]
+ delta_Lt_new<-output_cp_new[[2]] #randomjumpsizes, delta_Lti
+ #Lt_new<-output_cp_new[,3] #L_t
 },
 {output_vg_new<-vargamma(t,sigma,nu,theta,gs) #calls the function varGamma with output timesequence and V
  
@@ -120,11 +135,13 @@ cogarch_sim<-function(t=0:10,beta=1,eta=0.05,phi=0.03,Lp="cp",rate=1,distributio
   G<-cumsum(delta_G) #length=nn+1
   
   switch(index,
-{output<-cbind(G,vol,c(0,Lt_new),c(0,delta_Lt_new),c(0,rt_new))
- colnames(output)<-c("G","vol","Lt","delta_Lt","randomjumptimes")
+{output <- list(process = G,volatility = vol,Levy_process = c(0,Lt_new),
+               inc_Levy_process = c(0,delta_Lt_new),
+               rand_jumptimes = c(0,rt_new))
 },
-{output<-cbind(G,vol,Lt_new,c(0,delta_Lt_new),rt_new) 
- colnames(output)<-c("G","vol","Lt","delta_Lt","randomjumptimes")
+{output <- list(process = G,volatility = vol,Levy_process = Lt_new,
+                inc_Levy_process = c(0,delta_Lt_new),
+                rand_jumptimes = rt_new)
 }
   )
   return(output)

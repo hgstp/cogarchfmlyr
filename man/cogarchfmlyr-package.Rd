@@ -1,7 +1,7 @@
 \name{cogarchfmlyr-package}
 \alias{cogarchfmlyr-package}
 \docType{package}
-\title{
+\title{Simulation within the COGARCH family
 }
 \description{
 ~~ A concise (1-5 lines) description of the package ~~
