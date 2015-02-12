@@ -1,4 +1,4 @@
-#' Simulation of compound Poisson process
+#' Simulation of a compound Poisson process
 #' 
 #' comp_pois_proc simulates the trajectory of a compound Poisson process
 #' 
@@ -68,7 +68,7 @@ list(jump_times = sort(U), jump_sizes = Y[order(U)], obs_times = obs_times,
 ########################################################################################
 
 
-#' Simulation of Variance Gamma process
+#' Simulation of a Variance Gamma process
 #' 
 #' var_gam_proc simulates the trajectory of a variance gamma process 
 #' with parameters sigma>0, nu>0 and theta
@@ -101,6 +101,43 @@ list(jump_times = sort(U), jump_sizes = Y[order(U)], obs_times = obs_times,
     # the increments of the time changed brownian motion with drift given by theta*dTG
     dV <- rnorm(length(diff_obs_times), mean = theta * dTG, sd = sigma * sqrt(dTG))
     
-    list(obs_times = obs_times, V = c(0, cumsum(dV)))  
+    list(obs_times = obs_times, process = c(0, cumsum(dV)))  
     
   }
+
+
+#############################################################################
+
+#' Simulation of a NIG process
+#' 
+#' nig_proc simulates the trajectory of a normal inverse Gaussian process 
+#' with parameters sigma>0, kappa>0 and theta
+#' 
+#' The process is defined ... 
+#' 
+#' @param sigma standard deviation of the Brownian motion
+#' @param kappa intensity of the subordinator
+#' @param theta  drift parameter
+#' @param obs_times observation times of the process
+#' 
+#' @return output list containing the jump times, the jump sizes, the observation times
+#'   and the NIG process
+#'  
+#'
+#
+
+  nig_proc <- function(sigma, kappa, theta, obs_times) {
+    
+    diff_obs_times <- diff(obs_times)
+    
+    # increments of the subordinator over the grid diff_obs_times
+    dS <- SuppDists::rinvGauss(length(diff_obs_times), 
+                               lambda = diff_obs_times^2 / kappa,
+                               nu = diff_obs_times)
+    
+    # increments of the NIG process over the grid diff_obs_times
+    dX <- rnorm(length(diff_obs_times), mean = theta * dS,
+                sd = sigma * sqrt(dS))
+    list(obs_times = obs_times, process = c(0, cumsum(dX)))
+  }
+
